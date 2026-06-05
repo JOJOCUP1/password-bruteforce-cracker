@@ -1,0 +1,125 @@
+%% UML class diagram — Password Brute-Force Cracker (multithreaded)
+%% Render: npx -y @mermaid-js/mermaid-cli -i UML_ClassDiagram.mmd -o UML_ClassDiagram.png
+classDiagram
+    direction LR
+
+    class Program {
+        +char[] Charset$
+        +int MaxLength$
+        +Main(string[]) int$
+        -RunBenchmark() int$
+        -RunThroughput() int$
+    }
+
+    class MainForm {
+        -PasswordHasher _hasher
+        -BruteForceEngine _engine
+        -CancellationTokenSource _cts
+        -System.Windows.Forms.Timer _uiTimer
+        -OnGenerateClick()
+        -OnStartClick()
+        -OnStopClick()
+        -OnCompareClick()
+        -UpdateProgressUi()
+        -ShowResult(BruteForceResult)
+    }
+
+    class PasswordHasher {
+        +const string Salt$
+        +const int HashByteLength$
+        +Hash(string) string
+        +ComputeHash(string, Span~byte~)
+        +ComputeHash(ReadOnlySpan~char~, Span~byte~)
+    }
+
+    class PasswordGenerator {
+        +const int MinLength$
+        +const int MaxLengthExclusive$
+        -char[] _charset
+        -Random _random
+        +Generate() string
+    }
+
+    class CombinationGenerator {
+        -char[] _charset
+        +int CharsetSize
+        +CombinationCount(int) long
+        +Enumerate(int, int) Cursor
+        +Generate(int) IEnumerable~string~
+        +GenerateWithFirstChar(int, int) IEnumerable~string~
+    }
+
+    class Cursor {
+        <<struct>>
+        -char[] _buffer
+        -int[] _indices
+        +ReadOnlySpan~char~ Current
+        +MoveNext() bool
+    }
+
+    class PasswordValidator {
+        -PasswordHasher _hasher
+        -byte[] _targetHash
+        +IsMatch(ReadOnlySpan~char~) bool
+        +IsMatch(string) bool
+    }
+
+    class BruteForceEngine {
+        -CombinationGenerator _generator
+        -PasswordValidator _validator
+        -long _attempts
+        -string _foundPassword
+        +int MaxThreads
+        +long Attempts
+        +int CurrentLength
+        +TimeSpan Elapsed
+        +double CurrentLengthProgress
+        +RecommendedThreadCount$ int
+        +Run(bool, CancellationToken) BruteForceResult
+        -SearchAllLengthsParallel(int, CTS)
+        -RunPartition(Cursor, CTS)
+    }
+
+    class BruteForceResult {
+        +bool Found
+        +string Password
+        +TimeSpan Elapsed
+        +long Attempts
+        +int ThreadCount
+        +bool Parallel
+        +double AttemptsPerSecond
+        +IReadOnlyDictionary~int,long~ PerThreadAttempts
+    }
+
+    class PerformanceLogger {
+        -string _path
+        +string LogPath
+        +BuildComparison(BruteForceResult, BruteForceResult, string) string
+        +Append(string)
+    }
+
+    class Form {
+        <<System.Windows.Forms>>
+    }
+
+    MainForm --|> Form : inherits
+    MainForm ..> PasswordHasher : creates
+    MainForm ..> PasswordGenerator : creates
+    MainForm ..> CombinationGenerator : creates
+    MainForm ..> PasswordValidator : creates
+    MainForm ..> BruteForceEngine : runs
+    MainForm ..> PerformanceLogger : logs with
+    MainForm ..> BruteForceResult : displays
+
+    Program ..> MainForm : launches
+    Program ..> BruteForceEngine : benchmarks
+    Program ..> PerformanceLogger : logs with
+
+    BruteForceEngine o--> CombinationGenerator : generates candidates
+    BruteForceEngine o--> PasswordValidator : validates candidates
+    BruteForceEngine ..> BruteForceResult : produces
+    BruteForceEngine ..> Cursor : iterates
+
+    PasswordValidator o--> PasswordHasher : hashes with
+    CombinationGenerator *-- Cursor : creates
+    PerformanceLogger ..> BruteForceResult : reads

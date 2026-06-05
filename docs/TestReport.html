@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Test Report — Password Brute-Force Cracker (Multithreaded)</title>
+<style>
+  @page { size: A4; margin: 18mm 16mm; }
+  * { box-sizing: border-box; }
+  body { font-family: "Segoe UI", Arial, sans-serif; color: #1b1b1b; font-size: 11pt; line-height: 1.45; }
+  h1, h2, h3 { color: #14315c; line-height: 1.2; }
+  h1 { font-size: 21pt; }
+  h2 { font-size: 15pt; border-bottom: 2px solid #14315c; padding-bottom: 3px; margin-top: 26px; }
+  h3 { font-size: 12.5pt; margin-top: 18px; }
+  code, pre { font-family: "Consolas", "Courier New", monospace; }
+  pre { background: #1e1e1e; color: #e6e6e6; padding: 10px 12px; border-radius: 6px; font-size: 8.6pt;
+        line-height: 1.35; white-space: pre-wrap; overflow-wrap: anywhere; }
+  code { background: #eef1f6; color: #14315c; padding: 1px 4px; border-radius: 3px; font-size: 9.5pt; }
+  pre code { background: none; color: inherit; padding: 0; }
+  table { border-collapse: collapse; width: 100%; margin: 10px 0; font-size: 9.8pt; }
+  th, td { border: 1px solid #b9c2d0; padding: 5px 8px; text-align: left; vertical-align: top; }
+  th { background: #e8eef7; color: #14315c; }
+  tr:nth-child(even) td { background: #f6f8fb; }
+  figure { margin: 14px 0; text-align: center; page-break-inside: avoid; }
+  figure img { max-width: 100%; border: 1px solid #cfd6e0; border-radius: 4px; }
+  figcaption { font-size: 9pt; color: #555; font-style: italic; margin-top: 5px; }
+  .tag { display: inline-block; background: #14315c; color: #fff; font-size: 8pt; padding: 1px 6px;
+         border-radius: 10px; vertical-align: middle; }
+  .ok { color: #157f3b; font-weight: 600; }
+  .muted { color: #666; }
+  .titlepage { height: 247mm; display: flex; flex-direction: column; justify-content: center;
+               text-align: center; page-break-after: always; }
+  .titlepage .sub { font-size: 13pt; color: #44597a; margin-top: 6px; }
+  .titlepage .meta { margin-top: 40px; font-size: 11pt; }
+  .titlepage .meta table { width: auto; margin: 0 auto; font-size: 11pt; }
+  .titlepage .meta td { border: none; padding: 3px 10px; }
+  .titlepage .meta td:first-child { color: #14315c; font-weight: 600; text-align: right; }
+  .repo { margin-top: 18px; font-size: 11pt; }
+  .repo a { color: #1551a8; }
+  .pagebreak { page-break-before: always; }
+  ul.tight { margin: 6px 0; } ul.tight li { margin: 2px 0; }
+  .note { background: #fff7e6; border-left: 4px solid #e0a416; padding: 8px 12px; border-radius: 4px; margin: 10px 0; }
+</style>
+</head>
+<body>
+
+<!-- ───────────────────────── TITLE PAGE ───────────────────────── -->
+<div class="titlepage">
+  <h1>Password Brute-Force Cracker</h1>
+  <div class="sub">A Multithreaded Brute-Force Attack on a Salted SHA-256 Hash</div>
+  <div class="sub">Test Report &amp; Documentation</div>
+
+  <div class="repo">
+    <strong>Public GitHub repository:</strong><br>
+    <a href="https://github.com/JOJOCUP1/password-bruteforce-cracker">https://github.com/JOJOCUP1/password-bruteforce-cracker</a>
+  </div>
+
+  <div class="meta">
+    <table>
+      <tr><td>Author</td><td>Mate Jojua</td></tr>
+      <tr><td>Email</td><td>jojuamate99@gmail.com</td></tr>
+      <tr><td>GitHub</td><td>JOJOCUP1</td></tr>
+      <tr><td>Student ID</td><td>__________________</td></tr>
+      <tr><td>Course / Module</td><td>__________________</td></tr>
+      <tr><td>Instructor</td><td>__________________</td></tr>
+      <tr><td>Date</td><td>5 June 2026</td></tr>
+      <tr><td>Platform</td><td>Windows 11, .NET 10, C# / Windows Forms</td></tr>
+    </table>
+  </div>
+</div>
+
+<!-- ───────────────────────── 1. OBJECTIVE ───────────────────────── -->
+<h2>1. Objective</h2>
+<p>
+  The goal of this assignment is to build a desktop application that <strong>brute-forces a password</strong>
+  which has been hashed with <strong>SHA-256 and a constant static salt</strong>. The application generates a
+  secret password of random length, then recovers it by trying every possible character combination, starting
+  from length&nbsp;1, using a <strong>multi-threaded</strong> algorithm limited to <strong>(CPU&nbsp;cores&nbsp;−&nbsp;1)</strong>
+  worker threads. The work is performed in parallel, all threads stop the instant the password is found, and the
+  program logs the performance difference between single-threaded and multi-threaded execution.
+</p>
+<div class="note">
+  <strong>Educational scope.</strong> SHA-256 is used here as the <em>target</em> to be cracked in order to
+  demonstrate why salting, password length and slow hashing matter. It is not proposed as a way to store real
+  passwords — a dedicated slow KDF (PBKDF2, bcrypt, Argon2) should be used for that.
+</div>
+
+<!-- ───────────────────────── 2. UML ───────────────────────── -->
+<h2>2. UML Class Diagram</h2>
+<p>
+  Each major piece of functionality is implemented as its own class in its own file. The diagram below shows the
+  classes, their key members and their relationships. The engine is the orchestrator; it depends on a
+  <em>generator</em> and a <em>validator</em> that are intentionally independent of each other.
+</p>
+<figure>
+  <img src="UML_ClassDiagram.png" alt="UML class diagram">
+  <figcaption>Figure 1 — UML class diagram of the application.</figcaption>
+</figure>
+
+<table>
+  <tr><th>Class (file)</th><th>Responsibility</th></tr>
+  <tr><td><code>PasswordHasher</code></td><td>SHA-256 hashing of <em>salt&nbsp;+&nbsp;password</em> using a constant static salt.</td></tr>
+  <tr><td><code>PasswordGenerator</code></td><td>Creates the secret password with a random length in the range [4,&nbsp;6).</td></tr>
+  <tr><td><code>CombinationGenerator</code></td><td>Brute-force generator: produces every combination of a given length (with an allocation-free <code>Cursor</code>).</td></tr>
+  <tr><td><code>PasswordValidator</code></td><td>Brute-force validator: hashes a candidate and compares it to the target — independent of the generator.</td></tr>
+  <tr><td><code>BruteForceEngine</code></td><td>Drives the search single- or multi-threaded; manages threads, progress, cancellation.</td></tr>
+  <tr><td><code>BruteForceResult</code></td><td>Immutable summary of a run (found password, time, attempts, threads, per-thread work).</td></tr>
+  <tr><td><code>PerformanceLogger</code></td><td>Builds and writes the single-vs-multi performance comparison.</td></tr>
+  <tr><td><code>MainForm</code></td><td>The Windows Forms GUI (password creation, start/stop, progress, result).</td></tr>
+  <tr><td><code>Program</code></td><td>Entry point; launches the GUI or the headless self-test / benchmark modes.</td></tr>
+</table>
+
+<!-- ───────────────────────── 3. WHAT WAS IMPLEMENTED ───────────────────────── -->
+<h2 class="pagebreak">3. What Was Implemented — Requirement by Requirement</h2>
+<p>The table maps every requirement from the brief to the code that satisfies it, followed by notes on each.</p>
+<table>
+  <tr><th>#</th><th>Requirement</th><th>Status</th><th>Implementation</th></tr>
+  <tr><td>1</td><td>UML class diagram</td><td class="ok">Done</td><td>Section 2 / <code>docs/UML_ClassDiagram.png</code></td></tr>
+  <tr><td>2</td><td>GUI: creation, start/stop, progress, time, result</td><td class="ok">Done</td><td><code>MainForm.cs</code></td></tr>
+  <tr><td>3</td><td>Each feature in a separate class &amp; file</td><td class="ok">Done</td><td>9 classes, 9 files</td></tr>
+  <tr><td>4a</td><td>SHA-256 with constant static salt</td><td class="ok">Done</td><td><code>PasswordHasher.Salt</code></td></tr>
+  <tr><td>4b</td><td>Random password length [4,&nbsp;6)</td><td class="ok">Done</td><td><code>PasswordGenerator.Generate()</code></td></tr>
+  <tr><td>4c</td><td>Search length 1→6, blind to real length</td><td class="ok">Done</td><td>engine length loop + generator</td></tr>
+  <tr><td>4d</td><td>Multi-threading (Task based)</td><td class="ok">Done</td><td><code>BruteForceEngine</code> (TPL + Barrier)</td></tr>
+  <tr><td>4e</td><td>Maximum (CPU cores − 1) threads</td><td class="ok">Done</td><td><code>RecommendedThreadCount</code></td></tr>
+  <tr><td>4f</td><td>GUI: start/stop, progress, time, found password</td><td class="ok">Done</td><td><code>MainForm.cs</code></td></tr>
+  <tr><td>5</td><td>Parallel (not sequential) execution</td><td class="ok">Done</td><td>per-thread work breakdown proves it</td></tr>
+  <tr><td>6</td><td>Stop all threads immediately when found</td><td class="ok">Done</td><td>shared <code>CancellationTokenSource</code></td></tr>
+  <tr><td>7</td><td>Generator &amp; validator separate/independent</td><td class="ok">Done</td><td>two classes, no coupling</td></tr>
+  <tr><td>8</td><td>Log single vs multi performance</td><td class="ok">Done</td><td><code>PerformanceLogger</code> + log file</td></tr>
+</table>
+
+<h3>4a — SHA-256 with a constant static salt</h3>
+<p>
+  <code>PasswordHasher</code> holds a compile-time constant salt
+  (<code>P@ssCkr::Static$alt::2026</code>) and hashes the bytes of <em>salt&nbsp;+&nbsp;password</em>. The same salt
+  is used everywhere, so a given password always maps to the same digest. The hot path writes the digest into a
+  stack buffer (no per-candidate allocation) and is thread-safe.
+</p>
+
+<h3>4b — Random password length in [4, 6)</h3>
+<p>
+  <code>PasswordGenerator.Generate()</code> uses <code>Random.Next(4, 6)</code>, producing a length of exactly
+  4&nbsp;or&nbsp;5, and fills it with characters from the cracker's alphabet (<code>a–z</code>) so the password is
+  always reachable by the search.
+</p>
+
+<h3>4c &amp; 7 — Independent generator and validator; search starts at length 1</h3>
+<p>
+  The <strong>generator</strong> (<code>CombinationGenerator</code>) only enumerates candidate strings; it knows
+  nothing about the target. The <strong>validator</strong> (<code>PasswordValidator</code>) only hashes a candidate
+  and compares it to the target; it knows nothing about how candidates are produced. The engine begins at length&nbsp;1
+  and increases the length only after a length is exhausted, so it never uses prior knowledge of the real length.
+</p>
+
+<h3>4d, 4e, 5, 6 — Multithreading, thread cap, parallelism, immediate stop</h3>
+<ul class="tight">
+  <li><strong>4d/4e:</strong> the engine creates exactly <code>max(1, Environment.ProcessorCount − 1)</code> long-running
+      worker threads — 11 on the 12-core test machine.</li>
+  <li><strong>5:</strong> for each length the keyspace is split <em>by first character</em>; worker&nbsp;<code>id</code>
+      sweeps first characters <code>{id, id+W, id+2W, …}</code>, so all workers run at the same time on disjoint slices.
+      The result records how many candidates each thread processed — concrete proof of parallel work (see Figure&nbsp;3).</li>
+  <li><strong>6:</strong> the first thread to find the password records it atomically and cancels a shared
+      <code>CancellationTokenSource</code>; every other worker observes the cancellation and stops immediately.</li>
+</ul>
+
+<h3>8 — Performance logging</h3>
+<p>
+  <code>PerformanceLogger.BuildComparison()</code> formats a side-by-side report (time, attempts, hash-rate, speed-up
+  and parallel efficiency) and appends it to <code>performance_log.txt</code> next to the executable. The same
+  comparison is shown in the GUI's result area.
+</p>
+
+<!-- ───────────────────────── 4. GUI ───────────────────────── -->
+<h2 class="pagebreak">4. The Graphical Interface</h2>
+<p>The GUI is divided into four numbered sections matching the workflow: create a password, run the attack, watch
+   progress, read the result.</p>
+
+<figure>
+  <img src="screenshot_ready.png" alt="GUI ready state" style="max-width:78%">
+  <figcaption>Figure 2 — After generating a random password: the target SHA-256 hash and constant salt are shown;
+  the attack is ready to start.</figcaption>
+</figure>
+
+<figure>
+  <img src="screenshot_found.png" alt="GUI found state" style="max-width:78%">
+  <figcaption>Figure 3 — A completed multi-threaded attack. The password <code>yodr</code> was recovered in 87&nbsp;ms
+  after 402,576 attempts. The “parallel proof” list shows all 11 worker threads each processed tens of thousands of
+  candidates — the search really did run in parallel.</figcaption>
+</figure>
+
+<figure>
+  <img src="screenshot_compare.png" alt="GUI compare state" style="max-width:78%">
+  <figcaption>Figure 4 — The single-vs-multi comparison for the 5-character password <code>tlrqd</code>:
+  5,581&nbsp;ms single-threaded vs 1,238&nbsp;ms multi-threaded — a <strong>4.51×</strong> speed-up.</figcaption>
+</figure>
+
+<!-- ───────────────────────── 5. HOW IT WORKS ───────────────────────── -->
+<h2 class="pagebreak">5. How the Multithreaded Search Works</h2>
+<p>The engine reuses one fixed pool of <code>(cores − 1)</code> threads for the whole run and marches the threads
+   through the lengths together with a <code>Barrier</code>:</p>
+<pre><code>for length = 1 .. 6:                 // start at 1, grow; blind to the real length
+    all workers synchronise (Barrier)
+    worker id sweeps first chars { id, id+W, id+2W, ... }   // disjoint, parallel
+        for each candidate:
+            if validator.IsMatch(candidate):
+                record password (atomic) and Cancel() the shared token   // stop everyone
+</code></pre>
+<p>
+  Partitioning by first character means the slices never overlap, so no two threads test the same candidate and no
+  locking is needed on the search itself. A shared 64-bit counter (updated with <code>Interlocked</code>) and a stopwatch
+  feed the live progress bar, attempt counter, hash-rate and elapsed-time display, which a Windows&nbsp;Forms timer polls
+  every 100&nbsp;ms while the background search runs.
+</p>
+
+<!-- ───────────────────────── 6. TESTING ───────────────────────── -->
+<h2>6. Testing &amp; Example Output</h2>
+
+<h3>6.1 Build</h3>
+<pre><code>&gt; dotnet build PasswordBruteForcer.sln -c Debug
+Build succeeded.
+    0 Warning(s)
+    0 Error(s)</code></pre>
+
+<h3>6.2 Headless self-test (<code>--benchmark</code>)</h3>
+<p>This mode generates a random password, hashes it, then cracks it single- and multi-threaded and verifies the
+   recovered password equals the original.</p>
+<pre><code>=== Password Brute-Forcer — headless benchmark ===
+CPU cores         : 12
+Worker threads    : 11 (cores - 1)
+Salt (constant)   : P@ssCkr::Static$alt::2026
+Secret password   : sjdyn  (length 5)
+Target SHA-256    : ...
+Running SINGLE-threaded brute force...
+  found = sjdyn  time = 4808 ms  attempts = 8,861,672
+Running MULTI-threaded brute force...
+  found = sjdyn  time = 1279 ms  attempts = 8,341,573  threads = 11
+  threads that did work = 11
+SELF-TEST PASSED</code></pre>
+
+<h3>6.3 Fixed-work throughput (<code>--throughput</code>)</h3>
+<p>To measure pure scaling independent of where the password happens to sit, this mode hashes the <em>entire</em>
+   length&nbsp;1–5 keyspace (12,356,630 candidates) with no early exit.</p>
+<pre><code>=== Raw throughput (full length 1..5 sweep, no early exit) ===
+Keyspace swept    : 12,356,630 candidates
+Single-threaded sweep:  5536 ms   2,231,972 hashes/sec
+Multi-threaded  sweep:  1595 ms   7,748,585 hashes/sec   (11 threads)
+Throughput speed-up : 3.47x   (efficiency 32%)
+Keyspace coverage   : single=12,356,630, multi=12,356,630, expected=12,356,630 -> EXACT</code></pre>
+<p class="muted">The “EXACT” line confirms the generator visits every candidate once — no duplicates and none missed.</p>
+
+<h3>6.4 Crack-time samples</h3>
+<table>
+  <tr><th>Password</th><th>Length</th><th>Single-thread</th><th>Multi-thread (11)</th><th>Speed-up</th></tr>
+  <tr><td><code>hnzg</code></td><td>4</td><td>116 ms</td><td>32 ms</td><td>3.6×</td></tr>
+  <tr><td><code>trxn</code></td><td>4</td><td>270 ms</td><td>67 ms</td><td>4.0×</td></tr>
+  <tr><td><code>qytjz</code></td><td>5</td><td>3,744 ms</td><td>1,407 ms</td><td>2.7×</td></tr>
+  <tr><td><code>sjdyn</code></td><td>5</td><td>4,808 ms</td><td>1,279 ms</td><td>3.8×</td></tr>
+  <tr><td><code>tlrqd</code></td><td>5</td><td>5,581 ms</td><td>1,238 ms</td><td>4.5×</td></tr>
+</table>
+
+<!-- ───────────────────────── 7. ANALYSIS ───────────────────────── -->
+<h2>7. Performance Analysis</h2>
+<p>
+  The multi-threaded engine is faster than the single-threaded baseline in every run. The measured speed-up
+  (≈&nbsp;2.7–4.5× crack-time, ≈&nbsp;3.5× fixed-work throughput) is meaningful but <em>sub-linear</em> with respect to
+  11 threads. This is expected, for three reasons:
+</p>
+<ul class="tight">
+  <li><strong>SHA-256 cost is native.</strong> Each hash goes through the operating system's cryptography provider
+      (Windows CNG); that per-call overhead does not scale perfectly across cores.</li>
+  <li><strong>Clock throttling.</strong> A single busy core boosts to a higher turbo frequency than all twelve cores
+      running flat out, so the single-threaded baseline runs at a higher per-core clock.</li>
+  <li><strong>Early termination &amp; position luck.</strong> Crack-time depends on <em>where</em> the password sits in
+      the search order; a password near the start of the alphabet is found quickly even single-threaded, which
+      shrinks the apparent advantage of extra threads.</li>
+</ul>
+<p>
+  The requirement of the brief — that multi-threaded execution is demonstrably faster than single-threaded, with the
+  difference logged — is satisfied, and the per-thread breakdown demonstrates that the threads truly ran in parallel.
+</p>
+
+<!-- ───────────────────────── 8. CHALLENGES ───────────────────────── -->
+<h2>8. Challenges Faced</h2>
+<table>
+  <tr><th>Challenge</th><th>Resolution</th></tr>
+  <tr>
+    <td>The first design created fresh worker threads for <em>each</em> length, which reported 44 “threads” and wasted
+        time creating threads for the tiny early lengths.</td>
+    <td>Re-architected to a single fixed pool of (cores − 1) threads that march through all lengths in lockstep using a
+        <code>Barrier</code>; now exactly 11 threads do work.</td>
+  </tr>
+  <tr>
+    <td>Stopping <em>all</em> threads the instant the password is found, without leaving a worker blocked at the barrier.</td>
+    <td>A shared <code>CancellationTokenSource</code> is cancelled by the finder; barrier waits are cancellation-aware so
+        blocked workers wake up and exit cleanly.</td>
+  </tr>
+  <tr>
+    <td>Counting attempts from 11 threads without serialising on one counter every hash.</td>
+    <td>Each thread keeps a local count and flushes it into the shared <code>Interlocked</code> total in batches.</td>
+  </tr>
+  <tr>
+    <td>Keeping the UI responsive during a multi-second search.</td>
+    <td>The search runs on a background <code>Task</code>; a Forms <code>Timer</code> polls the engine's live counters and
+        updates the progress bar, attempts, hash-rate and elapsed time.</td>
+  </tr>
+  <tr>
+    <td>Sub-linear scaling looked disappointing at first.</td>
+    <td>Added a fixed-work throughput mode to measure pure scaling and identified the real limiters (native SHA-256 cost,
+        turbo clock, early-exit luck) — documented in Section&nbsp;7.</td>
+  </tr>
+</table>
+
+<!-- ───────────────────────── 9. BUILD & RUN ───────────────────────── -->
+<h2>9. How to Build and Run</h2>
+<pre><code># Prerequisites: Windows + .NET SDK 10 (or Visual Studio 2022/2026)
+
+dotnet build PasswordBruteForcer.sln -c Debug      # build
+dotnet run --project PasswordBruteForcer           # launch the GUI
+
+# or run the compiled executable directly:
+PasswordBruteForcer\bin\Debug\net10.0-windows\PasswordBruteForcer.exe
+
+# headless verification / measurements:
+PasswordBruteForcer.exe --benchmark                # crack a random password, log single vs multi
+PasswordBruteForcer.exe --throughput               # fixed-work scaling test</code></pre>
+
+<!-- ───────────────────────── 10. CONCLUSION ───────────────────────── -->
+<h2>10. Conclusion</h2>
+<p>
+  The application meets every requirement in the brief: a salted SHA-256 target password of random length is generated
+  and recovered by an independent generator/validator pair, driven by a multi-threaded engine capped at
+  (CPU&nbsp;cores&nbsp;−&nbsp;1) threads that searches from length&nbsp;1 upward, runs genuinely in parallel, stops all
+  threads the moment the password is found, and logs the single-vs-multi performance difference. The Windows&nbsp;Forms
+  GUI exposes password creation, start/stop, live progress, elapsed time and the recovered password, and the full
+  source is published with a per-task commit history on GitHub.
+</p>
+
+</body>
+</html>
