@@ -1,0 +1,22 @@
+# Build output (the compiled Debug folder is delivered separately as the Moodle .zip)
+bin/
+obj/
+
+# Performance log produced at runtime next to the executable
+performance_log.txt
+
+# Visual Studio / Rider / VS Code
+.vs/
+.idea/
+*.user
+*.suo
+
+# OS noise
+Thumbs.db
+.DS_Store
+
+# Tooling
+docs/puppeteer.json
+docs/_check_*.png
+.tooling/
+node_modules/
