@@ -1,26 +1,15 @@
-using System.Text;
+﻿using System.Text;
 
 namespace PasswordBruteForcer.Core;
 
-/// <summary>
-/// Task 8 — Logs the performance difference between the single-threaded and the multi-threaded
-/// brute-force runs. It formats a side-by-side comparison (time, attempts, throughput, speed-up
-/// and parallel efficiency) and appends it to <c>performance_log.txt</c> next to the executable.
-/// </summary>
 public sealed class PerformanceLogger
 {
     private readonly string _path;
-
-    /// <summary>Full path of the log file that comparisons are appended to.</summary>
     public string LogPath => _path;
 
-    /// <param name="path">Optional custom log path; defaults to performance_log.txt beside the app.</param>
     public PerformanceLogger(string? path = null)
         => _path = path ?? Path.Combine(AppContext.BaseDirectory, "performance_log.txt");
 
-    /// <summary>
-    /// Builds a human-readable comparison block from a single-threaded and a multi-threaded result.
-    /// </summary>
     public string BuildComparison(BruteForceResult single, BruteForceResult multi, string? actualPassword)
     {
         double singleMs = single.Elapsed.TotalMilliseconds;
@@ -43,14 +32,13 @@ public sealed class PerformanceLogger
         sb.AppendLine($"{"hashes/sec",-18}{single.AttemptsPerSecond,-22:N0}{multi.AttemptsPerSecond,-22:N0}");
         sb.AppendLine();
         sb.AppendLine($"Speed-up (single/multi) : {speedup:F2}x");
-        sb.AppendLine($"Parallel efficiency     : {efficiency:P0}  (speed-up / threads)");
+        sb.AppendLine($"Parallel efficiency     : {efficiency:P0}");
         sb.AppendLine("================================================================");
         return sb.ToString();
 
         static string Show(string? p) => p ?? "(not found)";
     }
 
-    /// <summary>Appends arbitrary text (typically a comparison block) to the log file.</summary>
     public void Append(string text)
         => File.AppendAllText(_path, text + Environment.NewLine);
 }
